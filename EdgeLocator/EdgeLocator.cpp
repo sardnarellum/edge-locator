@@ -28,7 +28,7 @@ void CannyThreshold(int, void*)
 
 	/// Canny detector
 	cv::Canny(detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
-	std::cout << t.stop() << std::endl;
+	std::cout << t << std::endl;
 
 	/// Using Canny's output as a mask, we display our result
 	dst = cv::Scalar::all(0);

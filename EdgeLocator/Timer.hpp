@@ -1,18 +1,25 @@
 #pragma once
 
 #include <chrono>
+#include <ostream>
+
 
 template<typename TimeT = std::chrono::microseconds,
 	typename ClockT = std::chrono::high_resolution_clock>
 class Timer {
 private:
-	std::chrono::time_point<ClockT> _start, _end;
+	typedef std::chrono::time_point<ClockT> tpoint;
+	tpoint _start;
 public:
 	Timer() { start(); }
-	void start() { _start = _end = ClockT::now(); }
-	auto stop() { _end = ClockT::now(); return elapsed(); }
+	void start() { _start = ClockT::now(); }
 	auto elapsed() {
-		return std::chrono::duration_cast<TimeT>(_end - _start).count();
+		return std::chrono::duration_cast<TimeT>(ClockT::now() - _start).count();
+	}
+
+	friend std::ostream& operator<<(std::ostream&o, Timer timer) {
+		o << timer.elapsed();
+		return o;
 	}
 };
 

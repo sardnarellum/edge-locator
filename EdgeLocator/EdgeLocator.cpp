@@ -1,6 +1,8 @@
 // EdgeLocator.cpp : Defines the entry point for the console application.
 //
 
+#define MYCPU
+
 #include "stdafx.h"
 
 #include <iostream>
@@ -27,7 +29,11 @@ void CannyThreshold(int, void*)
 	cv::blur(src, detected_edges, cv::Size(3, 3));
 
 	/// Canny detector
+#if !defined(MYCPU)
 	cv::Canny(detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
+#else
+
+#endif
 	std::cout << t << std::endl;
 
 	/// Using Canny's output as a mask, we display our result

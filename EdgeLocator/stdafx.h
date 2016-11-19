@@ -12,6 +12,11 @@
 
 #define CL_HPP_TARGET_OPENCL_VERSION 200
 
+#define MYCPU
+#define KERNEL_N 3
+#define KERNEL_N_POW (KERNEL_N * KERNEL_N)
+#define _USE_MATH_DEFINES
+
 
 
 // TODO: reference additional headers your program requires here

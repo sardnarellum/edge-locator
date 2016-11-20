@@ -1,27 +1,10 @@
-// EdgeLocator.cpp : Defines the entry point for the console application.
-//
-
 #include "stdafx.h"
 
-#include <iostream> 
-#include <cmath>
-#include <opencv2\core\core.hpp>
-#include <opencv2\highgui\highgui.hpp>
-#include <opencv2\imgproc\imgproc.hpp>
-//#include <opencv2\imgcodecs.hpp>
-
+#include "ClApp.h"
 #include "Timer.hpp"
 
-const auto window_name = "Edge Locator GUI";
-
-cv::Mat src, dst, detected_edges;
-
-auto const max_lowThreshold = 100;
-auto lowThreshold = 0;
-auto ratio = 3;
-auto kernel_size = 3;
-
-void convolution(const char* in, char* out, const double* kernel, const int& mat_m, const int& mat_n, const int& kernel_n) {
+void convolution(const char* in, char* out, const double* kernel, const int& mat_m, const int& mat_n, const int& kernel_n)
+{
 	auto kernel_half = kernel_n / 2;
 	for (int mat_i = kernel_half; mat_i < mat_m - kernel_half; ++mat_i) {
 		for (int mat_j = kernel_half; mat_j < mat_n - kernel_half; ++mat_j) {
@@ -39,17 +22,17 @@ void convolution(const char* in, char* out, const double* kernel, const int& mat
 	}
 }
 
-void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma) {
-
-	const auto kernel_n = static_cast<int>(ceil(4 * sigma) + 3);
-	const auto mean = floor(kernel_n / 2.0);
-	auto kernel = new double[kernel_n * kernel_n]; // variable length array
+void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma)
+{
+	const auto kernel_n = static_cast<int>(std::ceil(4 * sigma) + 3);
+	const auto mean = std::floor(kernel_n / 2.0);
+	auto kernel = new double[kernel_n * kernel_n];
 
 	size_t c = 0;
 	for (int i = 0; i < kernel_n; i++)
 		for (int j = 0; j < kernel_n; j++) {
-			kernel[c++] = exp(-0.5 * (pow((i - mean) / sigma, 2.0) +
-				pow((j - mean) / sigma, 2.0f)))
+			kernel[c++] = std::exp(-0.5 * (std::pow((i - mean) / sigma, 2.0) +
+				std::pow((j - mean) / sigma, 2.0f)))
 				/ (2 * M_PI * sigma * sigma);
 		}
 
@@ -58,23 +41,72 @@ void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat
 	delete kernel;
 }
 
-void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma) {
+void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma)
+{
 	gaussian_filter(in, out, mat_m, mat_n, sigma);
+
+	const double Gx[] = {
+		-1, 0, 1,
+		-2, 0, 2,
+		-1, 0, 1
+	};
+
+	auto gx_out = new char[mat_m*mat_n];
+	convolution(out, gx_out, Gx, mat_m, mat_n, KERNEL_N);
+
+	const double Gy[] = {
+		1, 2, 1,
+		0, 0, 0,
+	   -1,-2,-1
+	};
+
+	auto gy_out = new char[mat_m*mat_n];
+	convolution(out, gy_out, Gy, mat_m, mat_n, KERNEL_N);
+
+	auto G = new char[mat_m*mat_n];
+
+	for (int i = 1; i < mat_m - 1; i++)
+	{
+		for (int j = 1; j < mat_n - 1; j++)
+		{
+			const int c = i + mat_m * j;
+			G[c] = static_cast<char>(std::hypot(gx_out[c], gy_out[c]));
+		}
+	}
+	out = G;
 }
 
-void CannyThreshold(int, void*)
+int main(int argc, char** argv)
 {
-	Timer<> t;
 
-#if !defined(MYCPU)
-	/// Reduce noise with a kernel 3x3
-	cv::blur(src, detected_edges, cv::Size(KERNEL_N, KERNEL_N));
-	cv::Canny(detected_edges, detected_edges, lowThreshold, lowThreshold*ratio, kernel_size);
-#else
+#pragma region Check params
+	if (argc != 2)
+	{
+		for (int i = 0; i < argc; ++i) {
+			std::cout << argv[i] << std::endl;
+		}
+		std::cerr << "Usage: edge_locator image_to_process " << argc << " " << argv[1] << std::endl;
+		return -1;
+	}
+#pragma endregion
+
+#pragma region Variables and Init
+
+	const auto window_name = "Edge Locator GUI";
+	cv::Mat src = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
+	cv::Mat dst;
+	dst.create(src.size(), src.type());
+
+	if (!src.data)
+	{
+		std::cerr << "Could not open or find the image" << std::endl;
+		return -1;
+	}
 
 	auto width = src.cols;
 	auto height = src.rows;
-	auto in = new char[width*height];
+	auto pixel_num = width * height;
+	auto in = new char[pixel_num];
 	for (auto i = 0; i < width; ++i) {
 		for (auto j = 0; j < height; ++j) {
 			auto pixel = src.at<cv::Vec3b>(j, i);
@@ -83,10 +115,28 @@ void CannyThreshold(int, void*)
 		}
 	}
 
-	auto out = new char[width*height];
+	auto out = new char[pixel_num];
+#pragma endregion
 
-	edges(in, out, width, height, 0.4f);
+#pragma region CPU
 
+	Timer<> t;
+	edges(in, out, width, height, sigma);
+	std::cout << "CPU: " << t << std::endl;
+
+#pragma endregion
+
+#pragma region OpenCL
+
+	ClApp ocl_app;
+	ocl_app.Init(in, out, width, height, sigma);
+	ocl_app.Run();
+
+#pragma endregion
+
+#pragma region display results
+
+	cv::namedWindow(window_name, CV_WINDOW_AUTOSIZE);
 	cv::Mat resImg(height, width, CV_8UC3);
 
 	for (auto i = 0; i < width; ++i) {
@@ -97,44 +147,11 @@ void CannyThreshold(int, void*)
 		}
 	}
 
-
-#endif
-	std::cout << t << std::endl;
-
-	/// Using Canny's output as a mask, we display our result
-	//dst = cv::Scalar::all(0);
-
-	//src.copyTo(dst, detected_edges);
 	cv::imshow(window_name, resImg);
-
-}
-
-int main(int argc, char** argv)
-{
-	if (argc != 2)
-	{
-		for (int i = 0; i < argc; ++i) {
-			std::cout << argv[i] << std::endl;
-		}
-		std::cerr << "Usage: edge_locator image_to_process " << argc << " " << argv[1] << std::endl;
-		return -1;
-	}
-	src = cv::imread(argv[1], CV_LOAD_IMAGE_COLOR);
-	dst.create(src.size(), src.type());
-
-	if (!src.data)
-	{
-		std::cerr << "Could not open or find the image" << std::endl;
-		return -1;
-	}
-
-	cv::namedWindow(window_name, CV_WINDOW_AUTOSIZE);
-	cv::createTrackbar("Min Treshold", window_name, &lowThreshold, max_lowThreshold, CannyThreshold);
-
-	CannyThreshold(0, 0);
-
 	cvWaitKey(0);
 
-    return 0;
+#pragma endregion
+
+	return 0;
 }
 

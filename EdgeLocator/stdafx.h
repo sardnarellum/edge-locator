@@ -7,15 +7,25 @@
 
 #include "targetver.h"
 
+#define _USE_MATH_DEFINES
+#define KERNEL_N 3
+#define KERNEL_N_POW (KERNEL_N * KERNEL_N)
+
 #include <stdio.h>
 #include <tchar.h>
 
-#define CL_HPP_TARGET_OPENCL_VERSION 200
+#include <cmath>
+#include <iostream>
+#include <fstream>
 
-#define MYCPU
-#define KERNEL_N 3
-#define KERNEL_N_POW (KERNEL_N * KERNEL_N)
-#define _USE_MATH_DEFINES
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv2\imgcodecs.hpp>
+
+const auto sigma = 0.4f;
+
+
 
 
 

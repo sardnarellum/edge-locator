@@ -4,13 +4,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup>
-    <Link>
-      <AdditionalLibraryDirectories>$(INTELOCLPATH)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenCL.lib</AdditionalDependencies>
-    </Link>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(INTELOCLSDKROOT)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(OPENCV_DIR)\..\..\include;$(INTELOCLSDKROOT)\include</AdditionalIncludeDirectories>
     </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(OPENCV_DIR)\lib;$(INTELOCLSDKROOT)\lib\x64</AdditionalLibraryDirectories>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

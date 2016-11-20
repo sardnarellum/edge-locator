@@ -28,10 +28,10 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="OpenCLAdapter.h">
+    <ClInclude Include="Timer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.hpp">
+    <ClInclude Include="ClApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -42,8 +42,13 @@
     <ClCompile Include="EdgeLocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="OpenCLAdapter.cpp">
+    <ClCompile Include="ClApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <none Include="Convolution.cl">
+      <Filter>OpenCL Files</Filter>
+    </none>
   </ItemGroup>
 </Project>

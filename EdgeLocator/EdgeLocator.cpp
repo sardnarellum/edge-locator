@@ -76,8 +76,8 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 
 	auto nms = new char[mat_m*mat_n];
 
-	for (int i = 1; i < mat_m - 1; i++)
-		for (int j = 1; j < mat_n - 1; j++) {
+	for (auto i = 1; i < mat_m - 1; i++)
+		for (auto j = 1; j < mat_n - 1; j++) {
 			const int c = i + mat_m * j;
 			const int nn = c - mat_m;
 			const int ss = c + mat_m;
@@ -88,7 +88,7 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 			const int sw = ss + 1;
 			const int se = ss - 1;
 
-			const float dir = (float)(fmod(atan2(gy_out[c],
+			const auto dir = (float)(std::fmod(std::atan2(gy_out[c],
 				gx_out[c]) + M_PI,
 				M_PI) / M_PI) * 8;
 
@@ -107,7 +107,7 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 
 	// Reuse array
 	// used as a stack. mat_m*mat_n/2 elements should be enough.
-	int *edges = (int*)gy_out;
+	auto edges = (int*)gy_out;
 	memset(out, 0, sizeof(char) * mat_m * mat_n);
 	memset(edges, 0, sizeof(char) * mat_m * mat_n);
 
@@ -193,21 +193,31 @@ int main(int argc, char** argv)
 	auto out = new char[pixel_num];
 #pragma endregion
 
+
 #pragma region CPU
-
-	Timer<> t;
-	edges(in, out, width, height, tmin, tmax, sigma);
-	std::cout << "CPU: " << t << std::endl;
-
+#ifndef USE_GPU
+	{
+		Timer<> t;
+		edges(in, out, width, height, tmin, tmax, sigma);
+		std::cout << "CPU: " << t << std::endl;
+	}
+#endif
 #pragma endregion
 
-//#pragma region OpenCL
-//
-//	ClApp ocl_app;
-//	ocl_app.Init(in, out, width, height, sigma);
-//	ocl_app.Run();
-//
-//#pragma endregion
+#pragma region OpenCL
+#ifdef USE_GPU
+	{
+		ClApp ocl_app;
+		auto ok = ocl_app.Init(in, out, width, height, sigma);
+		if (ok)
+		{
+			Timer<> t;
+			ocl_app.Run();
+			std::cout << "GPU: " << t << std::endl;
+		}
+	}
+#endif
+#pragma endregion
 
 #pragma region display results
 

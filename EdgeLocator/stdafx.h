@@ -7,6 +7,7 @@
 
 #include "targetver.h"
 
+#define USE_GPU
 #define _USE_MATH_DEFINES
 #define KERNEL_N 3
 #define KERNEL_N_POW (KERNEL_N * KERNEL_N)
@@ -24,9 +25,9 @@
 #include <opencv2/imgproc/imgproc.hpp>
 //#include <opencv2\imgcodecs.hpp>
 
-const auto tmin = 5;
-const auto tmax = 96;
-const auto sigma = 0.4f;
+const auto tmin = 45;
+const auto tmax = 50;
+const auto sigma = 1.0f;
 
 
 

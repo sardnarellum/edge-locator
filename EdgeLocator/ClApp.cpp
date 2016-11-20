@@ -4,7 +4,7 @@
 #include <fstream>
 
 
-void ClApp::Init(const char* in, char* out, const int& m, const int& n, const float& sigma)
+bool ClApp::Init(const char* in, char* out, const int& m, const int& n, const float& sigma)
 {
 	pixel_num = m*n;
 	result = out;
@@ -73,13 +73,19 @@ void ClApp::Init(const char* in, char* out, const int& m, const int& n, const fl
 
 		buffer1 = Buffer(context, CL_MEM_READ_ONLY, (pixel_num) * sizeof(char));
 		buffer2 = Buffer(context, CL_MEM_WRITE_ONLY, (pixel_num) * sizeof(char));
+
 		queue.enqueueWriteBuffer(buffer1, CL_TRUE, 0, pixel_num * sizeof(char), in);
 		queue.finish();
+
+		kernel_conv.setArg(0, buffer1);
+		kernel_conv.setArg(1, buffer2);
 
 	}
 	catch (Error error) {
 		oclPrintError(error);
+		return false;
 	}
+	return true;
 }
 
 void ClApp::Run()

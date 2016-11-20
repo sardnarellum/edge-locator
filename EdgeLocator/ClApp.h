@@ -14,7 +14,7 @@ public:
 	ClApp() {}
 	~ClApp() {}
 
-	void Init(const char* in, char* out, const int& m, const int& n, const float& sigma);
+	bool Init(const char* in, char* out, const int& m, const int& n, const float& sigma);
 	void Run();
 
 private:

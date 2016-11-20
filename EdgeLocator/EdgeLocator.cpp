@@ -41,7 +41,7 @@ void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat
 	delete kernel;
 }
 
-void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma)
+void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const int& tmin, const int& tmax, const float& sigma)
 {
 	gaussian_filter(in, out, mat_m, mat_n, sigma);
 
@@ -73,7 +73,82 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 			G[c] = static_cast<char>(std::hypot(gx_out[c], gy_out[c]));
 		}
 	}
-	out = G;
+
+	auto nms = new char[mat_m*mat_n];
+
+	for (int i = 1; i < mat_m - 1; i++)
+		for (int j = 1; j < mat_n - 1; j++) {
+			const int c = i + mat_m * j;
+			const int nn = c - mat_m;
+			const int ss = c + mat_m;
+			const int ww = c + 1;
+			const int ee = c - 1;
+			const int nw = nn + 1;
+			const int ne = nn - 1;
+			const int sw = ss + 1;
+			const int se = ss - 1;
+
+			const float dir = (float)(fmod(atan2(gy_out[c],
+				gx_out[c]) + M_PI,
+				M_PI) / M_PI) * 8;
+
+			if (((dir <= 1 || dir > 7) && G[c] > G[ee] &&
+				G[c] > G[ww]) || // 0 deg
+				((dir > 1 && dir <= 3) && G[c] > G[nw] &&
+					G[c] > G[se]) || // 45 deg
+					((dir > 3 && dir <= 5) && G[c] > G[nn] &&
+						G[c] > G[ss]) || // 90 deg
+						((dir > 5 && dir <= 7) && G[c] > G[ne] &&
+							G[c] > G[sw]))   // 135 deg
+				nms[c] = G[c];
+			else
+				nms[c] = 0;
+		}
+
+	// Reuse array
+	// used as a stack. mat_m*mat_n/2 elements should be enough.
+	int *edges = (int*)gy_out;
+	memset(out, 0, sizeof(char) * mat_m * mat_n);
+	memset(edges, 0, sizeof(char) * mat_m * mat_n);
+
+	// Tracing edges with hysteresis . Non-recursive implementation.
+	size_t c = 1;
+	for (int j = 1; j < mat_n - 1; j++)
+		for (int i = 1; i < mat_m - 1; i++) {
+			if (nms[c] >= tmax && out[c] == 0) { // trace edges
+				out[c] = MAX_BRIGHTNESS;
+				int nedges = 1;
+				edges[0] = c;
+
+				do {
+					nedges--;
+					const int t = edges[nedges];
+
+					int nbs[8]; // neighbours
+					nbs[0] = t - mat_m;     // nn
+					nbs[1] = t + mat_m;     // ss
+					nbs[2] = t + 1;      // ww
+					nbs[3] = t - 1;      // ee
+					nbs[4] = nbs[0] + 1; // nw
+					nbs[5] = nbs[0] - 1; // ne
+					nbs[6] = nbs[1] + 1; // sw
+					nbs[7] = nbs[1] - 1; // se
+
+					for (int k = 0; k < 8; k++)
+						if (nms[nbs[k]] >= tmin && out[nbs[k]] == 0) {
+							out[nbs[k]] = MAX_BRIGHTNESS;
+							edges[nedges] = nbs[k];
+							nedges++;
+						}
+				} while (nedges > 0);
+			}
+			c++;
+		}
+
+	delete gx_out;
+	delete gy_out;
+	delete G;
+	delete nms;
 }
 
 int main(int argc, char** argv)
@@ -121,18 +196,18 @@ int main(int argc, char** argv)
 #pragma region CPU
 
 	Timer<> t;
-	edges(in, out, width, height, sigma);
+	edges(in, out, width, height, tmin, tmax, sigma);
 	std::cout << "CPU: " << t << std::endl;
 
 #pragma endregion
 
-#pragma region OpenCL
-
-	ClApp ocl_app;
-	ocl_app.Init(in, out, width, height, sigma);
-	ocl_app.Run();
-
-#pragma endregion
+//#pragma region OpenCL
+//
+//	ClApp ocl_app;
+//	ocl_app.Init(in, out, width, height, sigma);
+//	ocl_app.Run();
+//
+//#pragma endregion
 
 #pragma region display results
 
@@ -151,6 +226,8 @@ int main(int argc, char** argv)
 	cvWaitKey(0);
 
 #pragma endregion
+	delete in;
+	delete out;
 
 	return 0;
 }

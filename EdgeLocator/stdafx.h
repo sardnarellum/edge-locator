@@ -10,6 +10,7 @@
 #define _USE_MATH_DEFINES
 #define KERNEL_N 3
 #define KERNEL_N_POW (KERNEL_N * KERNEL_N)
+#define MAX_BRIGHTNESS 255
 
 #include <stdio.h>
 #include <tchar.h>
@@ -23,6 +24,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 //#include <opencv2\imgcodecs.hpp>
 
+const auto tmin = 5;
+const auto tmax = 96;
 const auto sigma = 0.4f;
 
 

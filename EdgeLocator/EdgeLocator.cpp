@@ -3,16 +3,16 @@
 #include "ClApp.h"
 #include "Timer.hpp"
 
-void convolution(const char* in, char* out, const double* kernel, const int& mat_m, const int& mat_n, const int& kernel_n)
+void convolution(const uchar* in, uchar* out, const double* kernel, const int& mat_m, const int& mat_n, const int& kernel_n)
 {
 	auto kernel_half = kernel_n / 2;
-	for (int mat_i = kernel_half; mat_i < mat_m - kernel_half; ++mat_i) {
-		for (int mat_j = kernel_half; mat_j < mat_n - kernel_half; ++mat_j) {
+	for (auto mat_i = kernel_half; mat_i < mat_m - kernel_half; ++mat_i) {
+		for (auto mat_j = kernel_half; mat_j < mat_n - kernel_half; ++mat_j) {
 			auto pixel = 0.0;
-			size_t c = 0;
+			auto c = 0;
 
-			for (int delta_i = -kernel_half; delta_i <= kernel_half; ++delta_i) {
-				for (int delta_j = -kernel_half; delta_j <= kernel_half; ++delta_j) {
+			for (auto delta_i = -kernel_half; delta_i <= kernel_half; ++delta_i) {
+				for (auto delta_j = -kernel_half; delta_j <= kernel_half; ++delta_j) {
 					pixel += in[(mat_j - delta_j) * mat_m + mat_i - delta_i] * kernel[c++];
 				}
 			}
@@ -22,15 +22,15 @@ void convolution(const char* in, char* out, const double* kernel, const int& mat
 	}
 }
 
-void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat_n, const float& sigma)
+void gaussian_filter(const uchar* in, uchar* out, const int& mat_m, const int& mat_n, const float& sigma)
 {
 	const auto kernel_n = static_cast<int>(std::ceil(4 * sigma) + 3);
 	const auto mean = std::floor(kernel_n / 2.0);
 	auto kernel = new double[kernel_n * kernel_n];
 
-	size_t c = 0;
-	for (int i = 0; i < kernel_n; i++)
-		for (int j = 0; j < kernel_n; j++) {
+	auto c = 0;
+	for (auto i = 0; i < kernel_n; i++)
+		for (auto j = 0; j < kernel_n; j++) {
 			kernel[c++] = std::exp(-0.5 * (std::pow((i - mean) / sigma, 2.0) +
 				std::pow((j - mean) / sigma, 2.0f)))
 				/ (2 * M_PI * sigma * sigma);
@@ -41,7 +41,7 @@ void gaussian_filter(const char* in, char* out, const int& mat_m, const int& mat
 	delete kernel;
 }
 
-void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const int& tmin, const int& tmax, const float& sigma)
+void edges(const uchar* in, uchar* out, const int& mat_m, const int& mat_n, const int& tmin, const int& tmax, const float& sigma)
 {
 	gaussian_filter(in, out, mat_m, mat_n, sigma);
 
@@ -51,7 +51,7 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 		-1, 0, 1
 	};
 
-	auto gx_out = new char[mat_m*mat_n];
+	auto gx_out = new uchar[mat_m*mat_n];
 	convolution(out, gx_out, Gx, mat_m, mat_n, KERNEL_N);
 
 	const double Gy[] = {
@@ -60,33 +60,33 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 	   -1,-2,-1
 	};
 
-	auto gy_out = new char[mat_m*mat_n];
+	auto gy_out = new uchar[mat_m*mat_n];
 	convolution(out, gy_out, Gy, mat_m, mat_n, KERNEL_N);
 
-	auto G = new char[mat_m*mat_n];
+	auto G = new uchar[mat_m*mat_n];
 
-	for (int i = 1; i < mat_m - 1; i++)
+	for (auto i = 1; i < mat_m - 1; i++)
 	{
-		for (int j = 1; j < mat_n - 1; j++)
+		for (auto j = 1; j < mat_n - 1; j++)
 		{
-			const int c = i + mat_m * j;
+			const auto c = i + mat_m * j;
 			G[c] = static_cast<char>(std::hypot(gx_out[c], gy_out[c]));
 		}
 	}
 
-	auto nms = new char[mat_m*mat_n];
+	auto nms = new uchar[mat_m*mat_n];
 
 	for (auto i = 1; i < mat_m - 1; i++)
 		for (auto j = 1; j < mat_n - 1; j++) {
-			const int c = i + mat_m * j;
-			const int nn = c - mat_m;
-			const int ss = c + mat_m;
-			const int ww = c + 1;
-			const int ee = c - 1;
-			const int nw = nn + 1;
-			const int ne = nn - 1;
-			const int sw = ss + 1;
-			const int se = ss - 1;
+			const auto c = i + mat_m * j;
+			const auto nn = c - mat_m;
+			const auto ss = c + mat_m;
+			const auto ww = c + 1;
+			const auto ee = c - 1;
+			const auto nw = nn + 1;
+			const auto ne = nn - 1;
+			const auto sw = ss + 1;
+			const auto se = ss - 1;
 
 			const auto dir = (float)(std::fmod(std::atan2(gy_out[c],
 				gx_out[c]) + M_PI,
@@ -108,21 +108,21 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 	// Reuse array
 	// used as a stack. mat_m*mat_n/2 elements should be enough.
 	auto edges = (int*)gy_out;
-	memset(out, 0, sizeof(char) * mat_m * mat_n);
-	memset(edges, 0, sizeof(char) * mat_m * mat_n);
+	memset(out, 0, sizeof(uchar) * mat_m * mat_n);
+	memset(edges, 0, sizeof(uchar) * mat_m * mat_n);
 
 	// Tracing edges with hysteresis . Non-recursive implementation.
-	size_t c = 1;
-	for (int j = 1; j < mat_n - 1; j++)
-		for (int i = 1; i < mat_m - 1; i++) {
+	auto c = 1;
+	for (auto j = 1; j < mat_n - 1; j++)
+		for (auto i = 1; i < mat_m - 1; i++) {
 			if (nms[c] >= tmax && out[c] == 0) { // trace edges
 				out[c] = MAX_BRIGHTNESS;
-				int nedges = 1;
+				auto nedges = 1;
 				edges[0] = c;
 
 				do {
 					nedges--;
-					const int t = edges[nedges];
+					const auto t = edges[nedges];
 
 					int nbs[8]; // neighbours
 					nbs[0] = t - mat_m;     // nn
@@ -134,7 +134,7 @@ void edges(const char* in, char* out, const int& mat_m, const int& mat_n, const 
 					nbs[6] = nbs[1] + 1; // sw
 					nbs[7] = nbs[1] - 1; // se
 
-					for (int k = 0; k < 8; k++)
+					for (auto k = 0; k < 8; k++)
 						if (nms[nbs[k]] >= tmin && out[nbs[k]] == 0) {
 							out[nbs[k]] = MAX_BRIGHTNESS;
 							edges[nedges] = nbs[k];
@@ -181,7 +181,7 @@ int main(int argc, char** argv)
 	auto width = src.cols;
 	auto height = src.rows;
 	auto pixel_num = width * height;
-	auto in = new char[pixel_num];
+	auto in = new uchar[pixel_num];
 	for (auto i = 0; i < width; ++i) {
 		for (auto j = 0; j < height; ++j) {
 			auto pixel = src.at<cv::Vec3b>(j, i);
@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	auto out = new char[pixel_num];
+	auto out = new uchar[pixel_num];
 #pragma endregion
 
 
